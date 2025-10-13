@@ -26,12 +26,37 @@ def build_http_response(status_code, content_type=None, content=None):
     else:
         return status_line.encode() + headers.encode()
 
+def generate_directory_listing(dir_path, base_dir, request_path):
+    # Generate an HTML page listing directory contents
+    entries = os.listdir(dir_path)
+    entries.sort()
+
+    html = ["<html><body>"]
+    html.append(f"<h2>Directory listing for {request_path}</h2><ul>")
+
+    # Add parent link if not at base
+    if dir_path != base_dir:
+        parent_path = os.path.dirname(request_path.rstrip('/'))
+        if not parent_path:
+            parent_path = '/'
+        html.append(f'<li><a href="{parent_path}">../</a></li>')
+
+    for name in entries:
+        full_path = os.path.join(dir_path, name)
+        display_name = name + '/' if os.path.isdir(full_path) else name
+        href = os.path.join(request_path, name)
+        if os.path.isdir(full_path):
+            href += '/'
+        html.append(f'<li><a href="{href}">{display_name}</a></li>')
+
+    html.append("</ul></body></html>")
+    return "\n".join(html).encode("utf-8")
+
 def handle_request(conn, base_dir):
     request = conn.recv(BUFFER_SIZE).decode()
     if not request:
         return
 
-    # Example request line: GET /index.html HTTP/1.1
     request_line = request.split('\n')[0]
     parts = request_line.split()
     if len(parts) < 2:
@@ -41,7 +66,6 @@ def handle_request(conn, base_dir):
     if method != "GET":
         return
 
-    # Remove leading '/' and prevent directory traversal
     requested_path = path.lstrip('/')
     safe_path = os.path.normpath(os.path.join(base_dir, requested_path))
 
@@ -50,33 +74,38 @@ def handle_request(conn, base_dir):
         conn.sendall(response)
         return
 
-    # Default to index.html if root requested
+    # Default to index.html if root
     if path == '/':
         safe_path = os.path.join(base_dir, "index.html")
 
-    # Check if file exists
+    # If directory requested show listing
+    if os.path.isdir(safe_path):
+        content = generate_directory_listing(safe_path, base_dir, path)
+        response = build_http_response(200, "text/html", content)
+        conn.sendall(response)
+        return
+
+    # If file requested
     if not os.path.isfile(safe_path):
         response = build_http_response(404)
         conn.sendall(response)
         return
 
-    # find content type
     content_type, _ = mimetypes.guess_type(safe_path)
     if content_type not in ["text/html", "image/png", "application/pdf"]:
         response = build_http_response(404)
         conn.sendall(response)
         return
 
-    # Read and send file
     with open(safe_path, 'rb') as f:
         content = f.read()
 
     response = build_http_response(200, content_type, content)
     conn.sendall(response)
 
-
 def server_start(base_dir):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((HOST, PORT))
         s.listen(1)
         print(f"serving '{base_dir}' at http://{HOST}:{PORT}")

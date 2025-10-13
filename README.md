@@ -1,13 +1,13 @@
-# HTTP File Server with TCP Sockets
+# Lab 1: HTTP File Server with TCP Sockets
 
-### Course: Computer Networks
+### Course: PR
 
 ### Author: Rudenco Ivan
 
 ---
 
 ### Contents of the source directory
-
+![alt text](img/qimage.png)
 
 ### Docker files
 `Dockerfile`:
@@ -45,7 +45,6 @@ services:
       - ./save:/save
     depends_on:
       - file-server
-
 ```
 
 ### Starting the container
@@ -58,7 +57,7 @@ Run `python server.py share`
 ![alt text](img/imagge.png)
 
 ### Contents of the served directory
-- `nested`: nested folder for bonus task
+- `dir`: nested folder for bonus task
 - `index.html`
 - `img.png`
 - `doc.pdf`

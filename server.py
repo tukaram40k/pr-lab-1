@@ -27,26 +27,31 @@ def build_http_response(status_code, content_type=None, content=None):
         return status_line.encode() + headers.encode()
 
 def generate_directory_listing(dir_path, base_dir, request_path):
-    # Generate an HTML page listing directory contents
+    """Generate an HTML page listing directory contents recursively."""
     entries = os.listdir(dir_path)
     entries.sort()
 
     html = ["<html><body>"]
     html.append(f"<h2>Directory listing for {request_path}</h2><ul>")
 
-    # Add parent link if not at base
+    # Add link to parent directory
     if dir_path != base_dir:
         parent_path = os.path.dirname(request_path.rstrip('/'))
         if not parent_path:
             parent_path = '/'
+        if not parent_path.endswith('/'):
+            parent_path += '/'
         html.append(f'<li><a href="{parent_path}">../</a></li>')
 
     for name in entries:
         full_path = os.path.join(dir_path, name)
         display_name = name + '/' if os.path.isdir(full_path) else name
-        href = os.path.join(request_path, name)
+
+        # Ensure URL-safe forward slashes
+        href = (request_path.rstrip('/') + '/' + name).replace('\\', '/')
         if os.path.isdir(full_path):
             href += '/'
+
         html.append(f'<li><a href="{href}">{display_name}</a></li>')
 
     html.append("</ul></body></html>")
@@ -69,6 +74,7 @@ def handle_request(conn, base_dir):
     requested_path = path.lstrip('/')
     safe_path = os.path.normpath(os.path.join(base_dir, requested_path))
 
+    # Prevent directory traversal
     if not safe_path.startswith(os.path.abspath(base_dir)):
         response = build_http_response(404)
         conn.sendall(response)

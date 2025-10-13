@@ -7,13 +7,50 @@
 ---
 
 ### Contents of the source directory
-- `share`: folder served by the server
-- `server.py`: server code
-- `client.py`: client code
 
-### Docker compose file
+
+### Docker files
+`Dockerfile`:
+```
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY server.py .
+COPY client.py .
+COPY share ./share
+
+EXPOSE 8080
+
+CMD ["python", "-u", "server.py", "share"]
+```
+`docker-compose.yaml`:
+```
+services:
+  file-server:
+    build: .
+    container_name: file_server
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./share:/app/share
+    restart: unless-stopped
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: http_client
+    command: ["python", "-u", "client.py", "file-server", "8080", "/img.png", "/save"]
+    volumes:
+      - ./save:/save
+    depends_on:
+      - file-server
+
+```
 
 ### Starting the container
+Run `docker compose up -d --build`:
+![alt text](img/image.png)
 
 ### Starting the server
 Run `python server.py share`

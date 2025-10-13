@@ -74,9 +74,11 @@ Run `python server.py share`
 
 ### Client and saving files (bonus point)
 Running the client:
+
 ![alt text](img/image-4.png)
 
 `img.png` is saved into `save`:
+
 ![alt text](img/image-5.png)
 
 ### Directory listing (bonus point)
